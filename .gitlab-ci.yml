@@ -1,0 +1,48 @@
+stages:
+- build
+- release
+
+variables:
+  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY/cmu/ta2eval:live
+
+build_image:
+  stage: build  
+
+  image: docker:stable
+
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+
+  before_script:
+    - docker info
+    - apk update && apk add git
+    - rm -rf bayesian_optimization
+    - git clone  https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.datadrivendiscovery.org/sray/bayesian_optimization.git
+    - cd bayesian_optimization
+    - git rev-parse --verify HEAD # show bayesian_optimization hash for the commit that is using here
+    - cd -
+    - git status # should show that your submodule changed
+    - wget https://github.com/fchollet/deep-learning-models/releases/download/v0.2/resnet50_weights_tf_dim_ordering_tf_kernels.h5
+
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:live" -f Dockerfile .
+    - docker push "$CI_REGISTRY_IMAGE:live"
+
+  only:
+    - master
+
+  #uncomment to specify which executor to use
+  tags:
+    #uncomment to run with docker runner
+    - docker
+    #uncomment to  run with shell runner
+    #- shell
+
+release-image:
+  stage: release
+  script:
+    - docker login -u $CMU_CI_USER -p "$CMU_CI_SECRET" $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE:live
+    - docker tag $CI_REGISTRY_IMAGE:live $CONTAINER_RELEASE_IMAGE
+    - docker push $CONTAINER_RELEASE_IMAGE
