@@ -1,16 +1,5 @@
 TA2 implementation for CMU
 
-# Overview
-
-Our job is to take requests for analysis from the TA3, turn it into an analysis pipeline using the available library of TA1 primitives, and run it.
-
-TA1 is by python function classes and method calls, basically, defined by a JSON schema.  We have the `primitive-interfaces` repo which defines the interfaces.  Then we have the `primitives_repo` repo which contains the schemas.  Then the schemas have the install source and method for the primitive, generally through pip.
-
-The TA3 requests take the form of a grpc protobuf call.  https://grpc.io/docs/quickstart/python.html has basics.
-
-Goals: Pipeline and API, primitives, TA3 interface, Bayes optimization.
-
-
 # Setup instructions
 
 Setup virtualenv
@@ -36,42 +25,12 @@ pip install docker grpcio-tools grpcio d3m
  * https://gitlab.com/datadrivendiscovery/primitive-interfaces
   * https://gitlab.com/datadrivendiscovery/tests-data.git
  * https://gitlab.datadrivendiscovery.org/jpl/primitives_repo.git
- * https://gitlab.datadrivendiscovery.org/nyu/ta3ta2-api
-  * https://gitlab.com/datadrivendiscovery/ta3ta2-api -- newer than above???  There's a v2017.12.20 branch, sigh
+  * https://gitlab.com/datadrivendiscovery/ta3ta2-api
 
-# A bit more guts
-
-Requests from the TA3 include a SessionContext which just contains a (string) ID.  Then the session ID is included with each request, so the server needs to remember that state.
-
-Each session has N pipelines defined, which are basically trained models.  You can create, delete, alter and run pipelines.  Pipelines must also be able to be saved and exported to be re-run later.
-
-Currently pipelines are 100% opaque.  Mitar's proposal, which we are going to need to do sooner or later, basically opens the black box and lets the user look inside, breaking pipelines into steps.  The steps can be defined, tuned, etc.  We need to build the system on the assumption that we're going to do either/both.
-
-## Tech
-
- * plasma for object store?  https://arrow.apache.org/docs/python/plasma.html
- * Celery for task distribution and communication, almost certainly.  Alternatives to look at: rq, huey, maybe kuyruk.  Question is basically whether to use redis or rabbitmq as the message broker.
- * 
-
-
-# Running (very ad-hoc)
-
-So after some hacking of paths and ports, we can start Matthias's TA3 interface like so (having installed all the deps in our virtualenv and activating it):
-
+Run TA2 as -
 ```
-env CONFIG_JSON_PATH=/home/sheath/projects/D3M/cmu-ta3/test-configs/test_config_185_local_mg.json python ta3ta2-proxy.py 
-```
-
-Now we can browse to `localhost:8088` (or whatever port set in `ta3ta2-proxy.py`) and should see "D3M January blah blah System Evaluation".
-
-We start our TA2:
-
-```
-cd /home/sheath/projects/D3M/cmu-ta2
 ./src/main.py ta2ta3
 ```
-
-Now we can hit "start session" in the thing and, lo and behold, it actually talks to our TA2!  Magic.
 
 # Building the docker image
 The repository automatically builds the docker image after each commit.
@@ -203,25 +162,6 @@ docker run -i -t \
     -e D3MCPU=8 \
     -e D3MTIMEOUT=5 \
     -e D3MRUN="search" \
-    registry.datadrivendiscovery.org/sheath/cmu-ta2:live
-```
-
-### Run in test mode
-WIP
-
-```bash
-docker run -i -t \
-    --rm \
-    --name d3m-cmu-ta2-test \
-    -p 45042:45042  \
-    --mount type=bind,source=</path/to/seed_dataset/on/host>,target=/input \
-    --mount type=bind,source=</path/to/output/on/host>,target=/output \
-    -e D3MTESTOPT="</path/to/executable/file>"  \
-    -e D3MINPUTDIR="</path/to/input_folder>"  \
-    -e D3MOUTPUTDIR="</path/to/output_folder>" \
-    -e D3MCPU=8 \
-    -e D3MTIMEOUT=5 \
-    -e D3MRUN="test" \
     registry.datadrivendiscovery.org/sheath/cmu-ta2:live
 ```
 
